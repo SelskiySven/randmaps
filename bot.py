@@ -41,7 +41,7 @@ def update_stats():
     last_id=id+""
     while id != "n/a":
         match_info = decode(id)
-        response==None
+        response=None
         while response==None:
             try:
                 cs.request_full_match_info(match_info["matchid"],match_info["outcomeid"],match_info["token"])
