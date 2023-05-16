@@ -1,4 +1,4 @@
-import discord, random, os, requests, asyncio
+import discord, random, os, requests, asyncio, json, datetime
 from discord.ext import commands
 from time import sleep
 from csgo.sharecode import decode
@@ -12,13 +12,15 @@ cs = CSGOClient(client)
 def start_csgo():
     cs.launch()
 
-
-client.login(open("keys/login.txt").read(),open("keys/password.txt").read())
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="-", intents=intents)
-
 avaliable_maps = ["mirage", "anubis", "ancient", "inferno", "overpass", "nuke", "vertigo"]
 code_to_map={2056:"ancient",8388616:"anubis",32776:"mirage",8200:"nuke",268435464:"overpass",4104:"inferno",16392:"vertigo"}
+api_data=json.loads(open("keys/api.json").read())
+users_data=json.loads(open("keys/users.json", encoding='utf-8').read())
+probability_of_maps_count = {0: 3,1: 30,2: 20,3: 15,4: 15,5: 7,6: 7,7: 3}
+
+client.login(api_data["login"],api_data["password"])
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix="-", intents=intents)
 
 def get_request(url):
     try:
@@ -30,48 +32,39 @@ def get_request(url):
     except:
         return get_request(url)
 
-def update_stats():
-    id = open("keys/lastid.txt").read()
-    steamapi = open("keys/steamapi.txt").read()
-    matchesid = open("keys/matches_access.txt").read()
-    id = get_request(f'https://api.steampowered.com/ICSGOPlayers_730/GetNextMatchSharingCode/v1?key={steamapi}&steamid=76561198390902271&steamidkey={matchesid}&knowncode={id}').json()['result']['nextcode']
-    
-    print("Collecting sharecodes...")
-    maps = []
-    last_id=id+""
-    while id != "n/a":
-        match_info = decode(id)
+def update_users_file():
+    now = datetime.datetime.now()
+    file_name=os.getcwd()+"\\backup\\backup_"+str(now.year)+"-"+str(now.month)+"-"+str(now.day)+"_"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)+".json"
+    open(file_name,"wb+").write(open("keys/users.json","rb").read())
+    open("keys/users.json","w",encoding='utf-8').write(json.dumps(users_data,ensure_ascii=False).replace("{","{\n    ").replace("}","}\n").replace('"maps"','\n        "maps"').replace('"last_id"','    "last_id"').replace('"match_api"','\n        "match_api"'))
+
+def update_stats(author):
+    print(f"Collecting sharecodes for {author}...")
+    maps_count=0
+    while True:
+        url = f'https://api.steampowered.com/ICSGOPlayers_730/GetNextMatchSharingCode/v1?key={api_data["steam_api"]}&steamid=76561198390902271&steamidkey={users_data[author]["match_api"]}&knowncode={users_data[author]["last_id"]}'
+        id = get_request(url).json()['result']['nextcode']
+        if id=="n/a":
+            break
+        else:
+            maps_count+=1
+            users_data[author]["last_id"]=id
+        print(f'Working with {users_data[author]["last_id"]}')
+        match_info = decode(users_data[author]["last_id"])
         response=None
         while response==None:
             try:
                 cs.request_full_match_info(match_info["matchid"],match_info["outcomeid"],match_info["token"])
                 response, = cs.wait_event('full_match_info')
             except:
-                client.login(open("keys/login.txt").read(),open("keys/password.txt").read())
+                client.login(api_data["login"],api_data["password"])
 
         game_type=response.matches[0].roundstatsall[-1].reservation.game_type
         if game_type in code_to_map.keys():
-            maps.append(code_to_map[game_type])
-        print(f"Working with {id}")
-        url = f'https://api.steampowered.com/ICSGOPlayers_730/GetNextMatchSharingCode/v1?key={steamapi}&steamid=76561198390902271&steamidkey={matchesid}&knowncode={id}'
-        last_id=id+""
-        id = get_request(url).json()['result']['nextcode']
-    print(f"Number of collected maps:{len(maps)}")
-
-    if len(maps) > 0:
-        f = open("maps.txt")
-        maps_from_file=f.read().split(",")
-        f.close()
-        f = open("maps.txt", "w+")
-        maps=maps_from_file+maps
-        maps_string = ','.join([str(elem) for elem in maps[-100:]])
-        f.write(maps_string)
-        print("Maps file updated")
-        f = open("keys/lastid.txt", "w")
-        f.write(last_id)
-        f.close()
-        print("Last match ID saved")
-
+            users_data[author]["maps"]=(users_data[author]["maps"]+[code_to_map[game_type]])[-100:]
+    print(f"Number of collected maps:{maps_count}")
+    update_users_file()
+    print("Users file updated")
 
 def randomize(dict):
     sum_of_values = sum(dict.values())
@@ -95,7 +88,7 @@ def pick_random_file(dir_name):
 
 
 async def play_audio(vc, path):
-    vc.play(discord.FFmpegPCMAudio(source=path))
+    vc.play(discord.FFmpegPCMAudio(source=path, executable="ffmpeg/ffmpeg.exe"))
     while vc.is_playing():
         await asyncio.sleep(.1)
 
@@ -103,30 +96,22 @@ async def play_audio(vc, path):
 @bot.command()
 async def randmaps(ctx):
     async with ctx.typing():
-        update_stats()
-        probability_of_maps_count = {
-            0: 3,
-            1: 30,
-            2: 20,
-            3: 15,
-            4: 15,
-            5: 7,
-            6: 7,
-            7: 3
-        }
+        author=ctx.author
+        if author not in users_data.keys():
+            author="Сельский Свин#8436"
+        update_stats(author)
         number_of_maps = randomize(probability_of_maps_count)
-        played_maps = open("maps.txt").read().split(",")
         maps = avaliable_maps.copy()
         probability_of_maps = {}
         for map in maps:
             probability_of_maps[map] = 1
-        for map in played_maps:
+        for map in users_data[author]["maps"]:
             probability_of_maps[map] += 1
         max_probability = max(probability_of_maps.values())+1
         for map in maps:
             probability_of_maps[map] = max_probability-probability_of_maps[map]
+        current_maps = []
         if number_of_maps != 0:
-            current_maps = []
             for i in range(number_of_maps):
                 current_map = randomize(probability_of_maps)
                 current_maps.append(current_map)
@@ -142,28 +127,31 @@ async def randmaps(ctx):
             await ctx.send(', '.join([str(elem) for elem in current_maps]))
             await play_audio(vc, pick_random_file("song/bye"))
             await play_audio(vc, "song/empty.mp3")
-            while vc.is_playing():
-                await asyncio.sleep(1)
             await vc.disconnect()
         else:
             await ctx.send(', '.join([str(elem) for elem in current_maps]))
 
 @bot.command()
-async def currentprob(ctx):
-    played_maps = open("maps.txt").read().split(",")
+async def currentprob(ctx, *args):
+    author = ' '.join(args)
+    if author not in users_data.keys():
+        author=ctx.author
+        if author not in users_data.keys():
+            author="Сельский Свин#8436"
     maps = avaliable_maps.copy()
     probability_of_maps = {}
     for map in maps:
         probability_of_maps[map] = 1
-    for map in played_maps:
+    for map in users_data[author]["maps"]:
         probability_of_maps[map] += 1
     max_probability = max(probability_of_maps.values())+1
     for map in maps:
         probability_of_maps[map] = max_probability-probability_of_maps[map]
     sum_of_prob=sum(probability_of_maps.values())
-    msg=""
+    msg=f"Вероятности выпадения карт {author}\n"
     for map in maps:
         msg+=map+": "+str(round(probability_of_maps[map]/sum_of_prob*100,2))+"%\n"
     await ctx.send(msg)
             
-bot.run(open("keys/api.txt").read())
+
+bot.run(api_data["bot_api"])
