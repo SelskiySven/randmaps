@@ -14,7 +14,7 @@ def start_csgo():
 
 avaliable_maps = ["mirage", "anubis", "ancient", "inferno", "overpass", "nuke", "vertigo"]
 code_to_map={2056:"ancient",8388616:"anubis",32776:"mirage",8200:"nuke",268435464:"overpass",4104:"inferno",16392:"vertigo"}
-api_data=json.loads(open("keys/api.json").read())
+api_data=json.loads(open("keys/api.json", encoding='utf-8').read())
 users_data=json.loads(open("keys/users.json", encoding='utf-8').read())
 probability_of_maps_count = {0: 3,1: 30,2: 20,3: 15,4: 15,5: 7,6: 7,7: 3}
 
@@ -42,7 +42,7 @@ def update_stats(author):
     print(f"Collecting sharecodes for {author}...")
     maps_count=0
     while True:
-        url = f'https://api.steampowered.com/ICSGOPlayers_730/GetNextMatchSharingCode/v1?key={api_data["steam_api"]}&steamid=76561198390902271&steamidkey={users_data[author]["match_api"]}&knowncode={users_data[author]["last_id"]}'
+        url = f'https://api.steampowered.com/ICSGOPlayers_730/GetNextMatchSharingCode/v1?key={api_data["steam_api"]}&steamid={users_data[author]["steam_id"]}&steamidkey={users_data[author]["match_api"]}&knowncode={users_data[author]["last_id"]}'
         id = get_request(url).json()['result']['nextcode']
         if id=="n/a":
             break
@@ -96,9 +96,9 @@ async def play_audio(vc, path):
 @bot.command()
 async def randmaps(ctx):
     async with ctx.typing():
-        author=ctx.author
+        author=str(ctx.author)
         if author not in users_data.keys():
-            author="Сельский Свин#8436"
+            author=api_data["default_user"]
         update_stats(author)
         number_of_maps = randomize(probability_of_maps_count)
         maps = avaliable_maps.copy()
@@ -129,7 +129,10 @@ async def randmaps(ctx):
             await play_audio(vc, "song/empty.mp3")
             await vc.disconnect()
         else:
-            await ctx.send(', '.join([str(elem) for elem in current_maps]))
+            if current_maps!=[]:
+                await ctx.send(', '.join([str(elem) for elem in current_maps]))
+            else:
+                await ctx.send('Премьер режим')
 
 @bot.command()
 async def currentprob(ctx, *args):
@@ -137,7 +140,7 @@ async def currentprob(ctx, *args):
     if author not in users_data.keys():
         author=ctx.author
         if author not in users_data.keys():
-            author="Сельский Свин#8436"
+            author=api_data["default_user"]
     maps = avaliable_maps.copy()
     probability_of_maps = {}
     for map in maps:
