@@ -1,0 +1,7 @@
+{
+    "bot_api": "discord bot api",
+    "login": "login from steam, you can create new account and it is ok",
+    "password": "password from this account",
+    "steam_api": "Steam api (take there https://steamcommunity.com/dev/apikey), to be better do NOT use your main account",
+    "default_user":"Your discord ID"
+}

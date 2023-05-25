@@ -1,0 +1,12 @@
+{
+    "your discord id": {
+        "last_id": "your oldest avaliable game code (like this CSGO-esrWo-Sx4bF-JAzbV-KcPqA-eyLwF)", 
+        "match_api": "your api for access to matches (take here https://help.steampowered.com/en/wizard/HelpWithGameIssue/?appid=730&issueid=128)", 
+        "steam_id": "your steam id", 
+        "maps": []},
+     "discord if of your friend": {
+        "last_id": "your friend's match id", 
+        "match_api": "your friend's api for access to matches", 
+        "steam_id": "your friend steam id", 
+        "maps": []}
+}    

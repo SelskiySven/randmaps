@@ -36,7 +36,7 @@ def update_users_file():
     now = datetime.datetime.now()
     file_name=os.getcwd()+"\\backup\\backup_"+str(now.year)+"-"+str(now.month)+"-"+str(now.day)+"_"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)+".json"
     open(file_name,"wb+").write(open("keys/users.json","rb").read())
-    open("keys/users.json","w",encoding='utf-8').write(json.dumps(users_data,ensure_ascii=False).replace("{","{\n    ").replace("}","}\n").replace('"maps"','\n        "maps"').replace('"last_id"','    "last_id"').replace('"match_api"','\n        "match_api"'))
+    open("keys/users.json","w",encoding='utf-8').write(json.dumps(users_data,ensure_ascii=False).replace("{","{\n    ").replace("},","},\n    ").replace("}}","}\n}    ").replace('"maps"','\n        "maps"').replace('"last_id"','    "last_id"').replace('"match_api"','\n        "match_api"').replace('"steam_id"','\n        "steam_id"'))
 
 def update_stats(author):
     print(f"Collecting sharecodes for {author}...")
