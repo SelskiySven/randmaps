@@ -100,22 +100,23 @@ async def randmaps(ctx):
         if author not in users_data.keys():
             author=api_data["default_user"]
         update_stats(author)
+        current_maps = []
         number_of_maps = randomize(probability_of_maps_count)
         maps = avaliable_maps.copy()
-        probability_of_maps = {}
-        for map in maps:
-            probability_of_maps[map] = 1
-        for map in users_data[author]["maps"]:
-            probability_of_maps[map] += 1
-        max_probability = max(probability_of_maps.values())+1
-        for map in maps:
-            probability_of_maps[map] = max_probability-probability_of_maps[map]
-        current_maps = []
-        if number_of_maps != 0:
-            for i in range(number_of_maps):
-                current_map = randomize(probability_of_maps)
-                current_maps.append(current_map)
-                probability_of_maps[current_map] = 0
+        if number_of_maps<7:
+            probability_of_maps = {}
+            for map in maps:
+                probability_of_maps[map] = 1
+            for map in users_data[author]["maps"]:
+                probability_of_maps[map] += 1
+            max_probability = max(probability_of_maps.values())+1
+            for map in maps:
+                probability_of_maps[map] = max_probability-probability_of_maps[map]
+            if number_of_maps != 0:
+                for i in range(number_of_maps):
+                    current_map = randomize(probability_of_maps)
+                    current_maps.append(current_map)
+                    probability_of_maps[current_map] = 0
         if ctx.author.voice != None:
             channel = ctx.author.voice.channel
             vc = await channel.connect()
@@ -124,15 +125,15 @@ async def randmaps(ctx):
             await play_audio(vc, f"song/maps/number/{number_of_maps}.m4a")
             for map in current_maps:
                 await play_audio(vc, f"song/maps/maps/{map}.m4a")
-            await ctx.send(', '.join([str(elem) for elem in current_maps]))
             await play_audio(vc, pick_random_file("song/bye"))
             await play_audio(vc, "song/empty.mp3")
             await vc.disconnect()
+        if number_of_maps==7:
+            await ctx.send(', '.join([str(elem) for elem in maps]))
+        elif number_of_maps==0:
+            await ctx.send('Премьер режим')
         else:
-            if current_maps!=[]:
-                await ctx.send(', '.join([str(elem) for elem in current_maps]))
-            else:
-                await ctx.send('Премьер режим')
+            await ctx.send(', '.join([str(elem) for elem in current_maps]))
 
 @bot.command()
 async def currentprob(ctx, *args):
