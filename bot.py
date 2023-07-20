@@ -16,7 +16,7 @@ avaliable_maps = ["mirage", "anubis", "ancient", "inferno", "overpass", "nuke", 
 code_to_map={2056:"ancient",8388616:"anubis",32776:"mirage",8200:"nuke",268435464:"overpass",4104:"inferno",16392:"vertigo"}
 api_data=json.loads(open("keys/api.json", encoding='utf-8').read())
 users_data=json.loads(open("keys/users.json", encoding='utf-8').read())
-probability_of_maps_count = {0: 3,1: 30,2: 20,3: 15,4: 15,5: 7,6: 7,7: 3}
+probability_of_maps_count = {0: 3,1: 40,2: 20,3: 10,4: 10,5: 7,6: 7,7: 3}
 
 client.login(api_data["login"],api_data["password"])
 intents = discord.Intents.all()
@@ -61,10 +61,11 @@ def update_stats(author):
 
         game_type=response.matches[0].roundstatsall[-1].reservation.game_type
         if game_type in code_to_map.keys():
-            users_data[author]["maps"]=(users_data[author]["maps"]+[code_to_map[game_type]])[-100:]
+            users_data[author]["maps"]=(users_data[author]["maps"]+[code_to_map[game_type]])[-20:]
     print(f"Number of collected maps:{maps_count}")
     update_users_file()
     print("Users file updated")
+    return maps_count
 
 def randomize(dict):
     sum_of_values = sum(dict.values())
@@ -96,7 +97,7 @@ async def play_audio(vc, path):
 @bot.command()
 async def randmaps(ctx):
     async with ctx.typing():
-        author=str(ctx.author)
+        author=str(ctx.author.name)
         if author not in users_data.keys():
             author=api_data["default_user"]
         update_stats(author)
@@ -107,8 +108,8 @@ async def randmaps(ctx):
             probability_of_maps = {}
             for map in maps:
                 probability_of_maps[map] = 1
-            for map in users_data[author]["maps"]:
-                probability_of_maps[map] += 1
+            for i in range(len(users_data[author]["maps"])):
+                probability_of_maps[users_data[author]["maps"][i]] = probability_of_maps[users_data[author]["maps"][i]]+(2**i)
             max_probability = max(probability_of_maps.values())+1
             for map in maps:
                 probability_of_maps[map] = max_probability-probability_of_maps[map]
@@ -125,13 +126,15 @@ async def randmaps(ctx):
             await play_audio(vc, f"song/maps/number/{number_of_maps}.m4a")
             for map in current_maps:
                 await play_audio(vc, f"song/maps/maps/{map}.m4a")
+            if number_of_maps==7:
+                await ctx.send(', '.join([str(elem) for elem in maps]))
+            elif number_of_maps==0:
+                await ctx.send('Премьер режим')
+            else:
+                await ctx.send(', '.join([str(elem) for elem in current_maps]))
             await play_audio(vc, pick_random_file("song/bye"))
             await play_audio(vc, "song/empty.mp3")
             await vc.disconnect()
-        if number_of_maps==7:
-            await ctx.send(', '.join([str(elem) for elem in maps]))
-        elif number_of_maps==0:
-            await ctx.send('Премьер режим')
         else:
             await ctx.send(', '.join([str(elem) for elem in current_maps]))
 
@@ -139,15 +142,15 @@ async def randmaps(ctx):
 async def currentprob(ctx, *args):
     author = ' '.join(args)
     if author not in users_data.keys():
-        author=ctx.author
+        author=ctx.author.name
         if author not in users_data.keys():
             author=api_data["default_user"]
     maps = avaliable_maps.copy()
     probability_of_maps = {}
     for map in maps:
         probability_of_maps[map] = 1
-    for map in users_data[author]["maps"]:
-        probability_of_maps[map] += 1
+    for i in range(len(users_data[author]["maps"])):
+        probability_of_maps[users_data[author]["maps"][i]] = probability_of_maps[users_data[author]["maps"][i]]+(2**i)
     max_probability = max(probability_of_maps.values())+1
     for map in maps:
         probability_of_maps[map] = max_probability-probability_of_maps[map]
@@ -156,6 +159,15 @@ async def currentprob(ctx, *args):
     for map in maps:
         msg+=map+": "+str(round(probability_of_maps[map]/sum_of_prob*100,2))+"%\n"
     await ctx.send(msg)
-            
+
+@bot.command()
+async def update(ctx, *args):
+    author = ' '.join(args)
+    if author not in users_data.keys():
+        author=ctx.author.name
+        if author not in users_data.keys():
+            author=api_data["default_user"]
+    number_of_maps=update_stats(author)
+    await ctx.send(f"Статистика для {author} обновлена\nКарт обработано: {str(number_of_maps)}")
 
 bot.run(api_data["bot_api"])
