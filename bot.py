@@ -136,7 +136,12 @@ async def randmaps(ctx):
             await play_audio(vc, "song/empty.mp3")
             await vc.disconnect()
         else:
-            await ctx.send(', '.join([str(elem) for elem in current_maps]))
+            if number_of_maps==7:
+                await ctx.send(', '.join([str(elem) for elem in maps]))
+            elif number_of_maps==0:
+                await ctx.send('Премьер режим')
+            else:
+                await ctx.send(', '.join([str(elem) for elem in current_maps]))
 
 @bot.command()
 async def currentprob(ctx, *args):
